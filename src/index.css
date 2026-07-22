@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #F5F6F8;
+  color: #14181F;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: #E8F0EE;
+  color: #1F4038;
+}
+
+/* subtle ledger paper texture for surfaces */
+.ledger-texture {
+  background-image: radial-gradient(circle, #D8DBE1 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+input:focus-visible,
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2F5D50;
+  outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none;
+  }
+}
