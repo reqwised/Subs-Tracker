@@ -81,19 +81,6 @@ Anon key aman untuk ditaruh di frontend/env publik — akses data tetap dikontro
 - Indikator visual untuk renewal yang mendekat (≤14 hari)
 - Export ke CSV
 
-## Struktur project
-
-```
-src/
-  lib/supabaseClient.js       Supabase client (baca dari env var)
-  context/AuthContext.jsx     Session state + signIn/signOut
-  utils/supabaseData.js       CRUD + realtime subscription ke tabel subscriptions
-  components/Login.jsx        Form sign-in
-  components/Dashboard.jsx    Kartu ringkasan
-  components/SubscriptionForm.jsx   Modal add/edit
-  components/SubscriptionTable.jsx  Tabel + search/filter/sort
-supabase/schema.sql           SQL untuk setup tabel, RLS, realtime, seed data
-```
 
 ## Catatan keamanan (RLS)
 
