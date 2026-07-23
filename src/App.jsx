@@ -1,20 +1,64 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Plus, Download, Receipt } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus, Download, Receipt, LogOut, Loader2 } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import SubscriptionTable from './components/SubscriptionTable'
 import SubscriptionForm from './components/SubscriptionForm'
-import { effectiveStatus, exportToCSV, seedData, uid } from './utils/helpers'
-import { loadSubscriptions, saveSubscriptions } from './utils/storage'
+import Login from './components/Login'
+import { useAuth } from './context/AuthContext'
+import { effectiveStatus, exportToCSV } from './utils/helpers'
+import {
+  fetchSubscriptions,
+  insertSubscription,
+  updateSubscription,
+  deleteSubscription,
+  subscribeToChanges,
+} from './utils/supabaseData'
 
 export default function App() {
-  const [subscriptions, setSubscriptions] = useState(() => loadSubscriptions(seedData()))
+  const { user, loading: authLoading, signOut } = useAuth()
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <Loader2 className="animate-spin text-pine" size={22} />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Login />
+  }
+
+  return <DashboardScreen user={user} onSignOut={signOut} />
+}
+
+function DashboardScreen({ user, onSignOut }) {
+  const [subscriptions, setSubscriptions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      setError('')
+      const data = await fetchSubscriptions()
+      setSubscriptions(data)
+    } catch (err) {
+      setError(err.message || 'Gagal memuat data dari Supabase.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    saveSubscriptions(subscriptions)
-  }, [subscriptions])
+    load()
+    // Live sync: refetch whenever another user (or tab) changes the shared table.
+    const unsubscribe = subscribeToChanges(() => load())
+    return unsubscribe
+  }, [load])
 
   const counts = useMemo(() => {
     const c = { total: subscriptions.length, Active: 0, 'Expiring Soon': 0, Expired: 0, Cancelled: 0 }
@@ -42,24 +86,38 @@ export default function App() {
     setFormOpen(true)
   }
 
-  function handleSave(data) {
-    if (editing) {
-      setSubscriptions((prev) => prev.map((s) => (s.id === editing.id ? { ...s, ...data } : s)))
-    } else {
-      setSubscriptions((prev) => [...prev, { ...data, id: uid() }])
+  async function handleSave(data) {
+    setSaving(true)
+    try {
+      if (editing) {
+        const updated = await updateSubscription(editing.id, data)
+        setSubscriptions((prev) => prev.map((s) => (s.id === editing.id ? updated : s)))
+      } else {
+        const created = await insertSubscription(data, user.id)
+        setSubscriptions((prev) => [...prev, created])
+      }
+      setFormOpen(false)
+      setEditing(null)
+    } catch (err) {
+      setError(err.message || 'Gagal menyimpan subscription.')
+    } finally {
+      setSaving(false)
     }
-    setFormOpen(false)
-    setEditing(null)
   }
 
-  function handleDelete(id) {
-    setSubscriptions((prev) => prev.filter((s) => s.id !== id))
-    setDeleteTarget(null)
+  async function handleDelete(id) {
+    try {
+      await deleteSubscription(id)
+      setSubscriptions((prev) => prev.filter((s) => s.id !== id))
+    } catch (err) {
+      setError(err.message || 'Gagal menghapus subscription.')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   return (
     <div className="min-h-screen bg-paper pb-16">
-      {/* Header */}
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -85,23 +143,60 @@ export default function App() {
               <Plus size={15} /> <span className="hidden sm:inline">Add Subscription</span>
               <span className="sm:hidden">Add</span>
             </button>
+            <div className="ml-1 hidden items-center gap-2 border-l border-line pl-3 sm:flex">
+              <span className="max-w-[140px] truncate text-xs text-muted" title={user.email}>
+                {user.email}
+              </span>
+              <button
+                onClick={onSignOut}
+                className="rounded-md p-1.5 text-muted transition hover:bg-paper hover:text-ink"
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-        <Dashboard counts={counts} monthlySpend={monthlySpend} />
+        {error && (
+          <div className="rounded-md border border-status-expired/30 bg-status-expiredBg px-4 py-3 text-sm text-status-expired">
+            {error}
+          </div>
+        )}
 
-        <div className="flex items-center justify-between sm:hidden">
-          <button
-            onClick={() => exportToCSV(subscriptions)}
-            className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink"
-          >
-            <Download size={15} /> Export CSV
-          </button>
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-muted">
+            <Loader2 className="mr-2 animate-spin" size={18} /> Memuat data…
+          </div>
+        ) : (
+          <>
+            <Dashboard counts={counts} monthlySpend={monthlySpend} />
 
-        <SubscriptionTable subscriptions={subscriptions} onEdit={openEdit} onDelete={(id) => setDeleteTarget(id)} />
+            <div className="flex items-center justify-between sm:hidden">
+              <button
+                onClick={() => exportToCSV(subscriptions)}
+                className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink"
+              >
+                <Download size={15} /> Export CSV
+              </button>
+              <button
+                onClick={onSignOut}
+                className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-muted"
+              >
+                <LogOut size={15} /> Sign out
+              </button>
+            </div>
+
+            <SubscriptionTable
+              subscriptions={subscriptions}
+              onEdit={openEdit}
+              onDelete={(id) => setDeleteTarget(id)}
+            />
+          </>
+        )}
       </main>
 
       {formOpen && (
@@ -109,6 +204,7 @@ export default function App() {
           initial={editing}
           onSave={handleSave}
           onClose={() => {
+            if (saving) return
             setFormOpen(false)
             setEditing(null)
           }}
@@ -120,7 +216,7 @@ export default function App() {
           <div className="w-full max-w-sm rounded-xl bg-surface p-5 shadow-xl">
             <h3 className="font-display text-base font-semibold text-ink">Delete subscription?</h3>
             <p className="mt-1.5 text-sm text-muted">
-              Tindakan ini tidak bisa dibatalkan. Data akan dihapus secara permanen dari daftar.
+              Tindakan ini tidak bisa dibatalkan. Data akan dihapus secara permanen untuk semua user.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
