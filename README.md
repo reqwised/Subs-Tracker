@@ -7,6 +7,14 @@ All authenticated users share and manage **the same subscription list** (ideal f
 ## Dashboard
 <img width="900" alt="image" src="https://github.com/user-attachments/assets/25e3be23-a1ce-49f2-8f61-879057ebb14d" />
 
+## Input Form
+<img width="900" alt="image" src="https://github.com/user-attachments/assets/46791a56-f365-40f1-b67c-80a1bcfd98b0" />
+
+## Login
+<img width="900" alt="image" src="https://github.com/user-attachments/assets/ba335dc5-9f99-441c-b7b2-26520d24e64e" />
+
+
+
 ---
 
 ## 1. Create a Supabase Project
