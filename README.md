@@ -4,6 +4,9 @@ A dashboard for tracking software/tool subscriptions and their renewal schedules
 
 All authenticated users share and manage **the same subscription list** (ideal for a team dashboard), and changes are synchronized in real time across all connected users.
 
+## Dashboard
+<img width="900" alt="image" src="https://github.com/user-attachments/assets/25e3be23-a1ce-49f2-8f61-879057ebb14d" />
+
 ---
 
 ## 1. Create a Supabase Project
