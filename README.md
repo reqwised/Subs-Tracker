@@ -1,87 +1,127 @@
 # Ledger — Subscription Tracker (Supabase + Multi-user)
 
-Dashboard untuk melacak subscription software/tools dan jadwal renewal-nya. React + Vite + Tailwind di frontend, Supabase (Postgres + Auth + Realtime) di backend. Semua user yang login melihat & mengelola **satu shared list yang sama** (cocok untuk dashboard tim), dengan perubahan yang sync realtime antar user.
+A dashboard for tracking software/tool subscriptions and their renewal schedules. Built with **React + Vite + Tailwind** on the frontend and **Supabase (Postgres + Auth + Realtime)** on the backend.
 
-## 1. Buat project Supabase
+All authenticated users share and manage **the same subscription list** (ideal for a team dashboard), and changes are synchronized in real time across all connected users.
 
-1. Buka [supabase.com](https://supabase.com) → **New Project**
-2. Catat **Project URL** dan **anon public key** (Project Settings → API) — dibutuhkan di step 3
+---
 
-## 2. Jalankan SQL schema
+## 1. Create a Supabase Project
 
-1. Di Supabase Dashboard, buka **SQL Editor → New query**
-2. Copy seluruh isi `supabase/schema.sql` dari project ini, paste, lalu **Run**
+1. Go to **https://supabase.com** and create a **New Project**.
+2. Save the following values from **Project Settings → API**:
 
-Ini akan membuat:
-- Tabel `subscriptions` (name, department, renewal_date, monthly_cost, status, notes, created_by, timestamps)
-- Trigger auto-update `updated_at`
-- Row Level Security: siapapun yang **sudah login** (authenticated) boleh select/insert/update/delete — karena ini shared team dashboard, bukan data privat per-user
-- Realtime enabled di tabel tsb, supaya semua user lihat perubahan secara live
-- 5 baris data contoh (opsional, boleh dihapus dari script kalau tidak mau)
+   * **Project URL**
+   * **Anon Public Key**
 
-## 3. Buat 3 user testing
+These values are required in Step 4.
 
-Paling gampang lewat Dashboard (tidak perlu SQL manual ke tabel `auth.users`, karena itu tabel internal Supabase):
+---
 
-1. Buka **Authentication → Users → Add user → Create new user**
-2. Isi email + password, lalu **centang "Auto Confirm User"** (supaya tidak perlu verifikasi email saat testing)
-3. Ulangi 3x, misalnya:
+## 2. Run the SQL Schema
 
-| Email | Password |
-|---|---|
-| tester1@ledger.app | Testing123! |
-| tester2@ledger.app | Testing123! |
-| tester3@ledger.app | Testing123! |
+1. Open **Supabase Dashboard → SQL Editor → New Query**.
+2. Copy the contents of `supabase/schema.sql` from this project, paste it into the editor, and click **Run**.
 
-Ganti password sesuai kebutuhan. Ketiganya bisa login bersamaan dari device berbeda dan akan melihat data yang sama secara realtime.
+The script will create:
 
-> Kalau nanti mau publik bisa sign-up sendiri (bukan cuma 3 akun manual), aktifkan lagi email confirmation di **Authentication → Settings** dan buka opsi sign-up di aplikasi (saat ini app cuma punya form sign-in, sesuai kebutuhan testing).
+* `subscriptions` table (`name`, `department`, `renewal_date`, `monthly_cost`, `status`, `notes`, `created_by`, timestamps)
+* Trigger to automatically update `updated_at`
+* Row Level Security (RLS) policies that allow any **authenticated** user to select, insert, update, and delete rows, since this is a **shared team dashboard** rather than a private per-user application
+* Realtime enabled on the table so all users receive live updates
+* 5 sample records (optional; remove them from the script if not needed)
 
-## 4. Setup environment variable lokal
+---
+
+## 3. Create 3 Test Users
+
+The easiest method is through the Supabase Dashboard (do not insert directly into `auth.users`, as it is an internal Supabase table).
+
+1. Open **Authentication → Users → Add User → Create New User**.
+2. Enter an email and password, then **enable “Auto Confirm User”** so email verification is not required during testing.
+3. Repeat for three accounts, for example:
+
+| Email                                           | Password    |
+| ----------------------------------------------- | ----------- |
+| [tester1@ledger.app](mailto:tester1@ledger.app) | Testing123! |
+| [tester2@ledger.app](mailto:tester2@ledger.app) | Testing123! |
+| [tester3@ledger.app](mailto:tester3@ledger.app) | Testing123! |
+
+These users can log in simultaneously from different devices and will see the same shared data in real time.
+
+> If you later want public self-registration instead of only the three manually created accounts, enable email confirmation again in **Authentication → Settings** and add a sign-up flow to the application. The current app only includes a sign-in form for testing purposes.
+
+---
+
+## 4. Configure Local Environment Variables
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Isi `.env.local`:
-```
+Update `.env.local`:
+
+```env
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci...
 ```
 
-## 5. Jalankan lokal
+---
+
+## 5. Run the App Locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Buka `http://localhost:5173`, login pakai salah satu dari 3 user testing di atas.
+Open **http://localhost:5173** and sign in using one of the test accounts created in Step 3.
 
-## 6. Deploy ke Vercel
+---
 
-Sama seperti sebelumnya (Import project dari GitHub / `vercel` CLI), **tambahan wajib**: set environment variables di Vercel supaya build production juga bisa connect ke Supabase.
+## 6. Deploy to Vercel
 
-1. Di Vercel project → **Settings → Environment Variables**
-2. Tambahkan:
-   - `VITE_SUPABASE_URL` = URL project Supabase kamu
-   - `VITE_SUPABASE_ANON_KEY` = anon public key kamu
-3. Redeploy (atau deploy pertama kali setelah env var diisi)
+Deploy as usual (import the GitHub repository or use the `vercel` CLI). One additional step is required: configure the production environment variables.
 
-Anon key aman untuk ditaruh di frontend/env publik — akses data tetap dikontrol lewat Row Level Security di database, bukan lewat merahasiakan key ini.
+1. In your Vercel project, open **Settings → Environment Variables**.
+2. Add:
 
-## Fitur
+   * `VITE_SUPABASE_URL` = your Supabase project URL
+   * `VITE_SUPABASE_ANON_KEY` = your Supabase anon public key
+3. Redeploy the project (or perform the first deployment after adding the variables).
 
-- Login multi-user (Supabase Auth)
-- Data subscription shared, sync realtime antar user (Supabase Realtime)
-- Tambah / edit / hapus subscription
-- Status (Active, Expiring Soon, Expired, Cancelled) dihitung otomatis dari tanggal renewal — kecuali di-override manual jadi "Cancelled"
-- Dashboard ringkasan: total, active, expiring soon, expired, monthly spend
-- Search & filter by status, sort kolom
-- Indikator visual untuk renewal yang mendekat (≤14 hari)
-- Export ke CSV
+The **anon public key is safe to expose in the frontend**. Data access is protected by **Row Level Security (RLS)** in the database, not by hiding this key.
 
+---
 
-## Catatan keamanan (RLS)
+## Features
 
-Policy saat ini: **siapapun yang login boleh baca & ubah semua row** — sesuai brief "3 user testing" yang perlu lihat dashboard yang sama. Kalau nanti butuh privasi per-department (misal, department A tidak boleh edit subscription department B), tinggal ubah policy di `supabase/schema.sql` untuk cek `department` atau tambah tabel `user_departments` dan filter `using ()` sesuai itu — tanya saja kalau butuh bantuan ini.
+* Multi-user authentication (Supabase Auth)
+* Shared subscription data with real-time synchronization (Supabase Realtime)
+* Create, edit, and delete subscriptions
+* Automatic status calculation (**Active**, **Expiring Soon**, **Expired**, **Cancelled**) based on the renewal date, unless manually overridden to **Cancelled**
+* Dashboard summary:
+
+  * Total subscriptions
+  * Active subscriptions
+  * Expiring soon
+  * Expired
+  * Monthly spending
+* Search, status filtering, and column sorting
+* Visual indicators for subscriptions renewing within **14 days**
+* CSV export
+
+---
+
+## Security Notes (RLS)
+
+The current RLS policy allows **any authenticated user to read and modify all rows**, which matches the shared-dashboard requirement for the three test users.
+
+If you later need **department-level access control** (for example, Department A cannot edit subscriptions belonging to Department B), you can update the policies in `supabase/schema.sql` to:
+
+* check the `department` field directly, or
+* create a `user_departments` table and filter access using RLS `USING (...)` conditions.
+
+This architecture is already compatible with that future enhancement; only the RLS policies need to be adjusted.
